@@ -1,0 +1,300 @@
+# DICE 2016R with Relative Prices
+
+# PARAMETERS
+
+#Time horizon 
+param T default 100;
+
+# Preferences
+param eta default 1.35; 							#intertemporal elasticity of marginal utility of consumption
+param rho default 0.011; 							#time preference rate
+param v default 0.152;								# damage parameter ES
+
+# relative prices additions
+param zeta default -0.11; 							#substitution parameter utility
+param phi default 0.5;								#share of biodiversity good in non-market goods				
+param beta default 0.1; 							#share of non-market good in utility function  
+param pi default 1;								#substitution parameter environmental function			
+param EQbar default 7.76;							#subsistence level of non-market good
+param psi default 0.0358;
+param cbar default 0; 								#subsistence level of consumption per capita
+
+# Discount factor
+param R {t in 0..T} = 1*exp(-rho*5*t);
+#param R {t in 0..T}>=0;					
+#let R[0]:=1;
+#let {t in 1..T} R[t] := R[t-1]/((1+rho)^5); 
+
+# Population and its dynamics, including assumption on asymptotic population of 11500 millions
+param L0:=7403; 					#initial world population 2015 (millions)
+param gL0:=0.134; 					#growth rate to calibrate to 2050 pop projection
+param L {t in 0..T}>=0; 
+let L[0]:=L0;
+let {t in 1..T} L[t]:=L[t-1]*((11500/L[t-1])^gL0);
+
+# Technology and its dynamics
+param gamma:=0.3;  					#capital elasticity in production function
+param deltaK:=0.1; 					#depreciation rate on capital (per year)
+param Qgross0:=105.5; 				#Initial world gross output 2015 (trill 2010 USD)
+param K0:=223; 						#initial capital value 2015 (trillions 2010 USD)
+param A0:=5.115; 					#initial level of total factor productivity
+param gA0 :=0.076; 					#initial growth rate for TFP per 5 years
+param deltaA default 0.005;			#decline rate of TFP per 5 years
+
+
+param gA {t in 0..T} := gA0*exp(-deltaA*5*t); 	# growth rate for TFP per period
+
+param A {t in 0..T}>=0;
+let A[0]:=A0;
+let {t in 1..T} A[t]:=A[t-1]/(1-gA[t-1]);
+
+
+# Emission parameters
+param gsigma0:=-0.0152; 			#initial growth of sigma (coninuous per year )
+param deltasigma:=-0.001; 			#decline rate of decarbonization per period
+param ELand0:=2.6; 					#initial Carbon emissions from land 2015 (GtCO2 per period)
+param deltaLand:=0.115; 			#decline rate of land emissions (per period)
+param EInd0:=35.85; 				#Industrial emissions 2015 (GtCO2 per year)
+param Ecum0:=400; 					#Initial cumulative emissions (GtCO2)
+param mu0:=.03; 					#Initial emissions control rate for base year 2010
+param Lambda0:=0; 					#Initial abatement costs
+param sigma0:=EInd0/(Qgross0*(1-mu0));#initial sigma (kgCO2 per output 2005 USD in 2010)
+
+param gsigma {t in 0..T};
+let gsigma[0]:=gsigma0;
+let {t in 1..T} gsigma[t]:=gsigma[t-1]*((1+deltasigma)^5);
+
+param sigma {t in 0..T}>=0;
+let sigma[0]:=sigma0;
+let {t in 1..T} sigma[t]:=sigma[t-1]*exp(gsigma[t-1]*5);
+
+param ELand {t in 0..T}>=0;
+let ELand[0]:=ELand0;
+let {t in 1..T} ELand[t]:=ELand [t-1]*(1-deltaLand); 
+
+
+# Carbon cycle
+param MAT0=851; 				# Initial Concentration in atmosphere 2015 (GtC)
+param MUP0:=460; 				# Initial Concentration in upper strata 2015 (GtC)
+param MLO0:=1740; 				# Initial Concentration in lower strata 2015 (GtC)
+param MATEQ:=588; 				# Equilibrium concentration in atmosphere (pre-industrial atmos. carbon) (GtC)
+param MUPEQ:=360; 				# Equilibrium concentration in upper strata (GtC)
+param MLOEQ:=1720; 				# Equilibrium concentration in lower strata (GtC)
+
+# Flow parameters  (carbon cycle transition matrix, corresponding to the bXX parameters in Nordhaus2016)
+param phi12:=0.12;
+param phi23:=0.007;
+param phi11=1-phi12;
+param phi21=phi12*MATEQ/MUPEQ;
+param phi22=1-phi21-phi23;
+param phi32=phi23*MUPEQ/MLOEQ;
+param phi33=1-phi32;
+
+
+# Climate model parameters
+param nu:=3.1; 					# Equilibrium temperature impact (°C per doubling C02)
+param Fex0:=0.5; 				# 2015 forcings of non-C02 GHG (Wm-2)
+param Fex1:=1.0; 				# 2100 forcings of non-C02 GHG (Wm-2)
+param TLO0:=0.0068; 			# Initial lower stratum temperature change (°C from 1900)
+param TAT0:=0.85; 				# Initial atmospheric temp change (°C from 1900)
+param xi1:=0.1005; 				# Speed of adjustment parameter for atmospheric temperature
+param xi3:=0.088; 				# Coefficient of heat loss from atmosphere to oceans
+param xi4:=0.025; 				# Coefficient of heat gain by deep oceans
+param kappa:=3.6813; 			# Forcings of equilibrium CO2 doubling (Wm-2)
+param xi2=kappa/nu; 			# climate model parameter
+
+# external forcing (Wm-2) is assumed to be constant and equal to Fex1 from 2100 onwards, see e.g. Traeger (2014, Fig.1)
+param Fex {t in 0..T}>=0; 
+let {t in 0..17} Fex[t]:=Fex0+1/18*(Fex1-Fex0)*(t); 	
+let {t in 18..T} Fex[t]:=Fex1; 	
+
+# Climate damage parameters
+param Psi default 0.00181; 		# damage term without 25% adjustment; damage quadratic term with 25% adjustment is 0.00236
+param MD default 0.0163; 		# market damages for 3°C warming above preindustrial according to Nordhaus (2017)
+param NMD default 0.0165;		# default 0.0165; with 25% add on 0.00494
+param TD=MD+NMD; 				# default 0.0326; 	# TD including 100% adjustment for NMD Stern (2007)=0.0326; Nordhaus(2014) assumes 25% adjustment for NMD cooresponding to TD =0.02124, 62.5%=0.0264857 
+param TATlim default 12;		# upper bound on atm. temperature change
+param epsilon default 0.1;		#damage parameter biodiversity loss 
+
+
+# Abatement cost
+param Theta:=2.6; 				# Exponent of control cost function
+param pback0:=550; 				# Cost of backstop 2010 $ per tCO2 2015
+param gback:=0.025; 			# Initial cost decline backstop cost per period
+
+param pback {t in 0..T}>=0; 
+let pback[0]:=pback0;
+let {t in 1..T} pback[t]:=pback[t-1]*(1-gback);
+
+param phead {t in 0..T}=pback[t]*sigma[t]/Theta/1000;
+     
+
+
+# VARIABLES
+
+# capital (trillions 2010 USD)
+var K {t in 0..T}>=1;
+
+# Gross output (trillions 2010 USD)
+var Qgross {t in 0..T}=A[t]*((L[t]/1000)^(1-gamma))*(K[t]^gamma);
+
+# carbon reservoir atmosphere (GtC)
+var MAT {t in 0..T}>=10;
+
+# carbon reservoir upper ocean (GtC)
+var MUP {t in 0..T}>=100;
+
+# carbon reservoir lower ocean (GtC)
+var MLO {t in 0..T}>=1000;
+
+# total radiative forcing (Wm-2)
+var F {t in 0..T}=kappa*((log(MAT[t]/MATEQ))/log(2))+Fex[t]; 
+
+# atmospheric temperature change (°C from 1750)
+var TAT {t in 0..T}>=0, <=TATlim;
+
+# ocean temperature (°C from 1750)
+var TLO {t in 0..T}>=-1, <=20;
+
+# damage fraction
+var Omega {t in 0..T}=Psi*(TAT[t])^2;
+
+# damages (trillions 2010 USD)
+var damage {t in 0..T}=Omega[t]*Qgross[t];
+
+# emission control
+var mu {t in 0..T}>=0;  
+
+# abatement costs (fraction of output)
+var Lambda {t in 0..T}=Qgross[t]*phead[t]*(mu[t]^Theta);
+
+# industrial emissions
+var EInd {t in 0..T}=sigma[t]*Qgross[t]*(1-mu[t]);
+
+# total emissions
+var E {t in 0..T};
+
+# maximum cumulative extraction fossil fuels (GtC)
+var Ecum {t in 0..T}<=6000;  
+
+# Marginal cost of abatement (carbon price)
+var cprice {t in 0..T}=pback[t]*mu[t]^(Theta-1);
+
+# output net of damages and abatement(trillions 2010 USD)
+var Q {t in 0..T}=(Qgross[t]*(1-Omega[t]))-Lambda[t];
+
+# per capita consumption (1000s 2010 USD]
+var c {t in 0..T} >= .1;
+
+# aggregate consumption
+var C {t in 0..T} = L[t]*c[t]/1000;
+
+# Investment(trillions 2005 USD)
+var I {t in 0..T}>=0;
+
+# Environmental Quality
+var EQ {t in 0..T}>=0.0000001 <=1000;
+
+# Biodiversity Goods        
+var B {t in 0..T}>=0.0000001;
+
+# Other non-market goods    
+var O {t in 0..T}>=0.0000001;
+
+# share of starting value of EQ in terms of C[0]
+
+param s default 1;
+
+# Non-market damages scaling parameter including subsistence requirement
+
+# including sub
+var a {t in 0..T} =(1/(nu^2))*(EQ[0]*(EQbar+((EQ[0]-EQbar)^(zeta)+((1-beta)/beta)*(((1-TD)*C[0])^(zeta)-((1-MD)*C[0])^(zeta)))^(1/zeta))^(-1)-1);
+
+#var=ab {t in 0..T} =(1/(nu^2))*(((((1/beta)*(beta*(C[0]-EQbar)^(zeta)++(1-beta)*((1-TD)*C[0])^(zeta)-((1-MD)*C[0])^(zeta)))^(1/zeta))+EQbar)^pi)-(phi*75.36^pi);
+
+var ab {t in 0..T} =(1/(nu^2))*(((((1/1-phi)*(((1/beta)*(beta*(C[0]-EQbar)^(zeta)++(1-beta)*((1-TD)*C[0])^(zeta)-((1-MD)*C[0])^(zeta))^(1/zeta)+EQbar)^pi-(phi*75.36^pi)))^(1/pi))^(-1)*C[0])-1);
+
+var g_C {t in 0..T-1} = (C[t+1]-C[t])/C[t];
+
+# growth rate of environmental quality
+
+var g_EQ {t in 0..T-1} = ((EQ[t+1]-EQ[t])/EQ[t]);
+
+# discount rate non-market goods
+
+#var discount_E {t in 0..T-1} = rho + ((((EQ[t]/(EQ[t]-EQbar)) * ((beta*eta *(EQ[t]-EQbar)^(zeta) +(1-beta)*(1-zeta)*(C[t])^(zeta))/(beta*(EQ[t]-EQbar)^(zeta) +(1-beta)*(C[t])^(zeta))) * g_EQ[t] + (((1-beta)*(C[t])^(zeta) *(eta-(1-zeta)))/(beta*(EQ[t]-EQbar)^(zeta) +(1-beta)*(C[t])^(zeta))) *g_C[t])+1)^(1/5)-1);  
+
+# discount rate market goods
+
+#var discount_C {t in 0..T-1} = rho + (((((beta*(1-zeta)*(EQ[t]-EQbar)^(zeta) + ((1-beta)*eta*(C[t])^(zeta)))/(beta*(EQ[t]-EQbar)^(zeta) +(1-beta)*(C[t])^(zeta)))*g_C[t] + ((beta*EQ[t]*(EQ[t]-EQbar)^(zeta-1)*(eta-(1-zeta)))/(beta*(EQ[t]-EQbar)^(zeta) + (1-beta)*C[t]^(zeta)))*g_EQ[t])+1)^(1/5)-1);
+
+
+# relative price effect 
+
+var RPE {t in 0..T-1} =(1-zeta)*(g_C[t]-((EQ[t]/(EQ[t]-EQbar))*g_EQ[t]));
+
+# relative price effect according to equation 10
+
+#var Q_Kt{t in 0..T}=A[t]*((L[t]/1000)^(1-gamma)) * gamma*K[t]^(gamma-1) * (1-Omega[t]);
+
+#var g_TAT {t in 0..T-1} = ((TAT[t+1]-TAT[t])/TAT[t]);
+
+#var RPE2 {t in 0..T-1} = (1-zeta)*(((1/(1+rho))*(1+Q_Kt[t]-deltaK))^(1/eta) - 1+ ((2*a[t]*TAT[t]^2*g_TAT[t])/(1+a[t]*TAT[t]^2)));
+
+#var RPE3 {t in 0..T-1} = (1-zeta)*(((1/(1+rho))*(1+Q_Kt[t]-deltaK))^(1/eta) - 1 + ((EQ[t]/(EQ[t]-EQbar))*g_EQ[t]));
+
+# utility
+
+var U {t in 0..T}= (((1-beta)*(c[t])^(zeta)+beta*((EQ[t]-EQbar)*1000/L[t])^(zeta))^((1-eta)/zeta))/(1-eta);
+
+
+# welfare/objective function
+var W=sum{t in 0..T} L[t]*U[t]*R[t];
+
+maximize objective_function: W;
+subject to initial_consumption: 					c[0]=10.4893;
+subject to constr_accounting {t in 0..T}: 			C[t]=Q[t]-I[t];
+subject to constr_emissions {t in 0..T}: 			E[t]=EInd[t]+ELand[t];
+subject to constr_capital_dynamics {t in 1..T}: 	K[t]=(1-deltaK)^5*K[t-1]+5*I[t-1];
+subject to constr_cumulativeemissions {t in 1..T}: 	Ecum[t]=Ecum[t-1]+(EInd[t-1]*5/3.666); 
+subject to constr_atmosphere {t in 1..T}: 			MAT[t]=E[t-1]*(5/3.666)+phi11*MAT[t-1]+phi21*MUP[t-1];
+subject to constr_upper_ocean {t in 1..T}: 			MUP[t]=phi12*MAT[t-1]+phi22*MUP[t-1]+phi32*MLO[t-1];
+subject to constr_lower_ocean {t in 1..T}: 			MLO[t]=phi23*MUP[t-1]+phi33*MLO[t-1];
+subject to constr_atmospheric_temp {t in 1..T}: 	TAT[t]=TAT[t-1]+xi1*((F[t]-xi2*TAT[t-1])-(xi3*(TAT[t-1]-TLO[t-1])));
+subject to constr_ocean_temp {t in 1..T}: 			TLO[t]=TLO[t-1]+xi4*(TAT[t-1]-TLO[t-1]);
+
+
+# Initial conditions
+subject to initial_capital: 					K[0] = K0;
+subject to initial_Ecum: 						Ecum[0]=Ecum0;
+subject to initial_MAT: 						MAT[0]=MAT0;
+subject to initial_MUP: 						MUP[0]=MUP0;
+subject to initial_MLO: 						MLO[0]=MLO0;
+subject to initial_TLO: 						TLO[0]=TLO0;
+subject to initial_TAT: 						TAT[0]=TAT0;
+subject to initial_control: 					mu[0]=mu0;
+subject to control1 {t in 1..28}: 				mu[t]<=1;
+subject to control2 {t in 29..T}: 				mu[t]<=1.2; # from 2150
+#subject to control_BAU {t in 1..T}: mu[t]=0;
+
+
+subject to initial_EQ: 							EQ[0]=s*C[0];
+subject to initial_O:							O[0]=s*C[0];
+subject to initial_B:							B[0]=s*C[0];
+
+subject to constr_EQ {t in 1..T}:				EQ[t]=((phi)*B[t]^(pi)+(1-phi)*O[t]^(pi))^(1/pi);
+subject to constr_B {t in 1..T}: 				B[t]=B[0]*(1-v*(4.4*10^(-3)*TAT[t]^2+1.73*10^(-2)*TAT[t]+2.8*10^(-4))^1.58);
+subject to constr_O {t in 1..T}:				O[t]=(O[0]/(1+psi*(TAT[t]^2)));
+
+# savings rate
+
+var srate {t in 0..T}=I[t]/Q[t];
+
+# social discount rate
+
+#var SDR {t in 0..T-1} = rho + eta*g_C[t];
+
+
+
+
+
